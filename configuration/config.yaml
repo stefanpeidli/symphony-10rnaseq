@@ -1,0 +1,30 @@
+DIR: "/g/huber/users/peidli/data/SYMPHONY/SYM10RNAseq"
+cell_lines:
+  - H1299
+  - H1975
+perturbations:
+  - NT
+  - RUBY
+  - MOCK
+  - FBL
+  - FTL
+  - MALAT
+  - NEAT
+  - SNHG15
+  - SNHG16
+  - VIM
+  - LINC
+  - PPIA_T1
+perturbation_colors:
+  NT: "#555555"  # dark gray
+  RUBY: "#cccccc"  # light gray
+  MOCK: "#000000"  # black
+  FBL: "#1f77b4"  # blue
+  FTL: "#ff7f0e"  # orange
+  MALAT: "#2ca02c"  # green
+  NEAT: "#d62728"  # red
+  SNHG15: "#9467bd"  # purple
+  SNHG16: "#8c564b"  # brown
+  VIM: "#e377c2"  # pink
+  LINC: "#17becf"  # teal
+  PPIA_T1: "#bcbd22"  # olive

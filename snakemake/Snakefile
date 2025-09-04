@@ -1,0 +1,94 @@
+"""
+Author: Stefan Peidli
+Title: Snakemake workflow for SYMPHONY experiment 10RNAseq.
+Last Updated: 04.09.2025
+Run: snakemake --sdm conda apptainer
+Create DAG: snakemake --forceall --dag | dot -Tpdf > snake_dag.pdf
+Create Rulegraph: snakemake --forceall --rulegraph | dot -Tpdf > snake_rulegraph.pdf
+"""
+
+### CONFIGURATION ###
+from snakemake.utils import min_version
+min_version("8.0.0")  # set minimum snakemake version, not tested with older versions, change at your own risk
+configfile: "../configuration/config.yaml"
+conda: "../environments/snake_env.yaml"
+
+### MODULES ###
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from pathlib import Path
+
+### PATHS and Names ###
+DIR = Path(config['DIR'])
+BASEDIR = Path(workflow.basedir)  # get the directory of the Snakefile
+SAMPLES = [line.strip() for line in open(BASEDIR / "../resources/sample_list.txt", encoding="utf-8")
+           if line.strip() and not line.lstrip().startswith("#")]
+PERTURBATIONS = config['perturbations']
+CELL_LINES = config['cell_lines']
+
+### RULES ###
+rule all:
+    input:
+        BASEDIR / "../results/count_matrix_vst.tsv",
+        expand(BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.tsv", cell_line=CELL_LINES, perturbation=PERTURBATIONS),
+
+rule collect_data:
+    input:
+        in_dir=DIR / "raw_counts/"
+    output:
+        counts=BASEDIR / "../results/count_matrix.tsv",
+        coldata=BASEDIR / "../results/coldata.tsv",
+    run:
+        tabs = {}
+        for sample in tqdm(SAMPLES):
+            d = Path(input.in_dir) / f'{sample}/RNA/counts/'
+            if d.exists():
+                tab = pd.read_csv(d / f"{sample}.converted_counts.tsv.gz", compression='gzip', sep='\t', header=0, skiprows=6, index_col=(0,1,2,3,4))
+                tabs[sample] = tab['count']
+        df = pd.concat(tabs, axis=1)
+        df = df[~df.index.get_level_values(1).duplicated(keep='first')]  # remove duplicated gene names
+        df.to_csv(output.counts, sep='\t', header=True)
+
+        coldata = pd.DataFrame({
+            "line": line,
+            "genotype": genotype,
+            "perturbation": perturbation,
+            "guide": guide,
+            "replicate": replicate
+        }, index=df.columns)
+        # Cleanup
+        # TODO: THIS NEEDS MORE CLEANUP
+        for index, row in coldata[~coldata.index.str.contains('_V')].iterrows():
+            coldata.loc[index, 'guide'] = row.perturbation[-1] if 'MOCK' not in index else None
+            coldata.loc[index, 'perturbation'] = row.perturbation[:-1].upper() if 'MOCK' not in index else 'MOCK'
+            coldata.loc[index, 'replicate'] = row.guide
+        coldata.to_csv(output.coldata, sep='\t', header=True)
+
+rule vst_normalization:
+    input:
+        counts=BASEDIR / "../results/count_matrix.tsv",
+        coldata=BASEDIR / "../results/coldata.tsv",
+    output:
+        vst=BASEDIR / "../results/count_matrix_vst.tsv",
+    resources:
+        mem_mb=64000,
+        runtime=60,
+    container:
+        "docker://quay.io/biocontainers/bioconductor-deseq2:1.46.0--r44he5774e6_1"
+    script: 
+        BASEDIR / "scripts/snake_vst.R"
+
+rule run_deseq2:
+    input:
+        counts=BASEDIR / "../results/count_matrix.tsv",
+        coldata=BASEDIR / "../results/coldata.tsv",
+    output:
+        deseq2_results=BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.tsv",
+    resources:
+        mem_mb=64000,
+        runtime=60,
+    container:
+        "docker://quay.io/biocontainers/bioconductor-deseq2:1.46.0--r44he5774e6_1"
+    script:
+        BASEDIR / "scripts/snake_run_deseq2.R"
