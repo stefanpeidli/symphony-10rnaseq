@@ -17,9 +17,10 @@ dependencies:
   - conda-forge::nbconvert
   - conda-forge::mscorefonts
   - bioconda::gseapy=1.1.8
-  - conda-forge::adjusttext 
+  - conda-forge::adjusttext
+  - conda-forge::fastcluster
+  - conda-forge::openpyxl
   - pip
   - pip:
     - PyComplexHeatmap==1.6.6
     - matplotlib_venn
-    - openpyxl

@@ -2,7 +2,7 @@
 Author: Stefan Peidli
 Title: Snakemake workflow for SYMPHONY experiment 10RNAseq.
 Last Updated: 04.09.2025
-Run: snakemake --sdm conda apptainer
+Run: snakemake --sdm conda apptainer --singularity-args "--bind /home/peidli/projects/symphony-10rnaseq"
 Create DAG: snakemake --forceall --dag | dot -Tpdf > snake_dag.pdf
 Create Rulegraph: snakemake --forceall --rulegraph | dot -Tpdf > snake_rulegraph.pdf
 """
@@ -25,13 +25,14 @@ BASEDIR = Path(workflow.basedir)  # get the directory of the Snakefile
 SAMPLES = [line.strip() for line in open(BASEDIR / "../resources/sample_list.txt", encoding="utf-8")
            if line.strip() and not line.lstrip().startswith("#")]
 PERTURBATIONS = config['perturbations']
+PERTURBATIONS_targeting = [p for p in PERTURBATIONS if p != 'NT']
 CELL_LINES = config['cell_lines']
 
 ### RULES ###
 rule all:
     input:
-        BASEDIR / "../results/count_matrix_vst.tsv",
-        expand(BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.tsv", cell_line=CELL_LINES, perturbation=PERTURBATIONS),
+        BASEDIR / "../results/count_matrix_vst.csv",
+        expand(BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.csv", cell_line=CELL_LINES, perturbation=PERTURBATIONS_targeting),
 
 rule collect_data:
     input:
@@ -50,6 +51,12 @@ rule collect_data:
         df = df[~df.index.get_level_values(1).duplicated(keep='first')]  # remove duplicated gene names
         df.to_csv(output.counts, sep='\t', header=True)
 
+        line = ['H1299' if k=='99' else 'H1975' if k=='75' else 'Unknown' for k in df.columns.str[:2]]  # TODO: verify this!
+        genotype = list(df.columns.str.split('_').str[0].str[2:])
+        perturbation = list(df.columns.str.split('_').str[1])
+        guide = list(df.columns.str.split('_').str[2])  # TODO: verify this!
+        replicate = list(df.columns.str.split('_').str[3])  # TODO: verify this!
+
         coldata = pd.DataFrame({
             "line": line,
             "genotype": genotype,
@@ -58,11 +65,19 @@ rule collect_data:
             "replicate": replicate
         }, index=df.columns)
         # Cleanup
-        # TODO: THIS NEEDS MORE CLEANUP
         for index, row in coldata[~coldata.index.str.contains('_V')].iterrows():
             coldata.loc[index, 'guide'] = row.perturbation[-1] if 'MOCK' not in index else None
             coldata.loc[index, 'perturbation'] = row.perturbation[:-1].upper() if 'MOCK' not in index else 'MOCK'
             coldata.loc[index, 'replicate'] = row.guide
+        coldata.loc[coldata.perturbation == 'MOC', 'perturbation'] = 'MOCK'
+        coldata.loc[coldata.perturbation == 'PP', 'guide'] = coldata.loc[coldata.perturbation == 'PP', 'replicate']
+        coldata.loc[coldata.perturbation == 'PP', 'replicate'] = coldata.loc[coldata.perturbation == 'PP'].index.str.split('_').str[-1]
+        coldata.loc[coldata.perturbation == 'PP', 'perturbation'] = 'PPIA'
+        coldata.loc[coldata.perturbation == 'MALAT', 'perturbation'] = 'MALAT1'
+        coldata.loc[coldata.perturbation == 'NEAT', 'perturbation'] = 'NEAT1'
+        coldata.loc[coldata.perturbation == 'MOCK', 'guide'] = None
+        coldata.loc[:, 'guide'] = coldata.loc[:, 'guide'].str.replace('V', '', regex=False)
+
         coldata.to_csv(output.coldata, sep='\t', header=True)
 
 rule vst_normalization:
@@ -70,7 +85,7 @@ rule vst_normalization:
         counts=BASEDIR / "../results/count_matrix.tsv",
         coldata=BASEDIR / "../results/coldata.tsv",
     output:
-        vst=BASEDIR / "../results/count_matrix_vst.tsv",
+        vst_counts=BASEDIR / "../results/count_matrix_vst.csv",
     resources:
         mem_mb=64000,
         runtime=60,
@@ -84,7 +99,7 @@ rule run_deseq2:
         counts=BASEDIR / "../results/count_matrix.tsv",
         coldata=BASEDIR / "../results/coldata.tsv",
     output:
-        deseq2_results=BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.tsv",
+        deseq2_results=BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.csv",
     resources:
         mem_mb=64000,
         runtime=60,
