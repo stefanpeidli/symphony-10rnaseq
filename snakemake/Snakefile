@@ -2,7 +2,7 @@
 Author: Stefan Peidli
 Title: Snakemake workflow for SYMPHONY experiment 10RNAseq.
 Last Updated: 04.09.2025
-Run: snakemake --sdm conda apptainer --singularity-args "--bind /home/peidli/projects/symphony-10rnaseq"
+Run: snakemake
 Create DAG: snakemake --forceall --dag | dot -Tpdf > snake_dag.pdf
 Create Rulegraph: snakemake --forceall --rulegraph | dot -Tpdf > snake_rulegraph.pdf
 """
@@ -33,6 +33,7 @@ rule all:
     input:
         BASEDIR / "../results/count_matrix_vst.csv",
         expand(BASEDIR / "../results/deseq2/{cell_line}/{perturbation}_deseq2_results.csv", cell_line=CELL_LINES, perturbation=PERTURBATIONS_targeting),
+        # expand(BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_genotype_effect.csv", cell_line=CELL_LINES, perturbation=PERTURBATIONS_targeting),
 
 rule collect_data:
     input:
@@ -89,8 +90,8 @@ rule vst_normalization:
     resources:
         mem_mb=64000,
         runtime=60,
-    container:
-        "docker://quay.io/biocontainers/bioconductor-deseq2:1.46.0--r44he5774e6_1"
+    conda:
+        "../environments/deseq2_env.yaml"
     script: 
         BASEDIR / "scripts/snake_vst.R"
 
@@ -103,7 +104,28 @@ rule run_deseq2:
     resources:
         mem_mb=64000,
         runtime=60,
-    container:
-        "docker://quay.io/biocontainers/bioconductor-deseq2:1.46.0--r44he5774e6_1"
+    conda:
+        "../environments/deseq2_env.yaml"
     script:
         BASEDIR / "scripts/snake_run_deseq2.R"
+
+# TODO: This requires the WT samples to be sequenced. WAITING FOR THAT.
+# rule run_deseq2_B:
+#     input:
+#         counts=BASEDIR / "../results/count_matrix.tsv",
+#         coldata=BASEDIR / "../results/coldata.tsv",
+#     output:
+#         res_genotype_effect=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_genotype_effect.csv",
+#         res_wt_vim_eq=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_wt_vim_eq.csv",
+#         res_mruby_vs_nt_cas=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_mruby_vs_nt_cas.csv",
+#         res_mock_vs_nt_cas=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_mock_vs_nt_cas.csv",
+#         res_mruby_eq_wt=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_mruby_eq_wt.csv",
+#         res_mock_eq_wt=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_mock_eq_wt.csv",
+#         res_genotype_main=BASEDIR / "../results/deseq2_B/{cell_line}_{perturbation}_deseq2_results_genotype_main_effect.csv",
+#     resources:
+#         mem_mb=64000,
+#         runtime=60,
+#     conda:
+        # "../environments/deseq2_env.yaml"
+#     script:
+#         BASEDIR / "scripts/snake_run_deseq2_B.R"

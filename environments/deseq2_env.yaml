@@ -6,9 +6,8 @@ channels:
 
 dependencies:
   # Core R setup
-  - conda-forge::r-base=4.4.3
+  - conda-forge::r-base=4.2
   - conda-forge::r-irkernel  #https://irkernel.github.io/installation/
   - conda-forge::notebook
-  
-  # Bioconductor and DESeq2
-  # - bioconda::bioconductor-deseq2=1.46.0
+  - bioconductor-deseq2
+  - bioconda::bioconductor-apeglm  # for shrinkage of lfc

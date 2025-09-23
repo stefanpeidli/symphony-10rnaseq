@@ -20,6 +20,7 @@ dependencies:
   - conda-forge::adjusttext
   - conda-forge::fastcluster
   - conda-forge::openpyxl
+  - conda-forge::scikit-learn
   - pip
   - pip:
     - PyComplexHeatmap==1.6.6

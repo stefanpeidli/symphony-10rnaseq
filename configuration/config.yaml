@@ -37,6 +37,7 @@ perturbation_colors:
   SNHG16: "#1954B0"
   VIM: "#e377c2"  # pink
   LINC: "#D2BBD7"
+  LINC-PINT: "#D2BBD7"
   PPIA: "#bcbd22"  # olive
 cell_line_colors:
   H1299: "#1964B0"
