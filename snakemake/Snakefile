@@ -109,6 +109,13 @@ rule run_deseq2:
     script:
         BASEDIR / "scripts/snake_run_deseq2.R"
 
+# rule build_reference:
+#     # Concatenate guides and Cas13 sequence for alignment as reference
+
+
+# rule align_Cas13:
+
+
 # TODO: This requires the WT samples to be sequenced. WAITING FOR THAT.
 # rule run_deseq2_B:
 #     input:
