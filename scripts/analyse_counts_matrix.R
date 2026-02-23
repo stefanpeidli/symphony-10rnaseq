@@ -212,13 +212,6 @@ ggsave("results/figures/pca_normalised_cellline.pdf", p1, width = 8, height = 6)
 ggsave("results/figures/pca_normalised_gene.pdf", p2, width = 10, height = 6)
 
 
-# --- Quick MDS plot (edgeR's built-in, good sanity check) ---
-pdf("mds_plot.pdf", width = 8, height = 6)
-plotMDS(dge, col = as.numeric(factor(dge$samples$Cell_line)), 
-        pch = ifelse(dge$samples$Cas13 == "Positive", 16, 1))
-legend("topright", legend = levels(factor(dge$samples$Cell_line)), 
-       col = 1:3, pch = 16)
-dev.off()
 
 
 
